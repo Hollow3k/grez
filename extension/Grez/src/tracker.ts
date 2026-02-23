@@ -29,10 +29,10 @@ export class GrezTracker{
                 () => {this.handleActivity(true);}
             ),
             vscode.window.onDidChangeTextEditorOptions(
-                () => {this.handleActivity(true);}
+                () => {this.handleActivity(false);}
             ),
             vscode.window.onDidChangeActiveTextEditor(
-                () => {this.handleActivity(true);}
+                () => {this.handleActivity(false);}
             )
         )
     }

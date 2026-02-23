@@ -2,15 +2,15 @@ import axios from 'axios';
 import * as vscode from 'vscode';
 import { HeartbeatPayload } from './types';
 
-const define = {
-  'process.env.API_BASE_URL': JSON.stringify(process.env.API_BASE_URL || 'http://localhost:5000/api/v1')
-};
+// const define = {
+//   'process.env.API_BASE_URL': JSON.stringify(process.env.API_BASE_URL || 'http://localhost:5000/api')
+// };
 
-const API_BASE_URL = process.env.API_BASE_URL;
+const API_BASE_URL = 'http://localhost:5000/api';
 
 export async function sendHeartbeat(payload : HeartbeatPayload) {
     try{
-        const token  = "AUTH_TOKEN"
+        const token  = "INSERT_TOKEN"
         
         const response = await axios.post(`${API_BASE_URL}/heartbeat`, payload, {
             headers: {
