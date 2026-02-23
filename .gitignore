@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+
+# Build Output
+dist/
+out/
+*.vsix
+
+# Local VS Code settings (keep .vscode/extensions.json if you want to recommend plugins)
+.vscode/*
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Environment variables
+.env
