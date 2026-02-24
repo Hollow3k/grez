@@ -1,43 +1,50 @@
 import * as vscode from 'vscode';
 import { HeartbeatPayload } from './types';
 import { sendHeartbeat } from './apiClient';
-import { timeStamp } from 'console';
 
-export class GrezTracker{
+export class GrezTracker {
+    private token: string | undefined;
     private lastHearbeatTime: number = 0;
-    private readonly INTERVAL = 120000; // 2mins
-    private disposables : vscode.Disposable[] = [];
-
+    private readonly INTERVAL = 120000; // 2 mins
+    private disposables: vscode.Disposable[] = [];
     private statusBarItem: vscode.StatusBarItem;
 
     constructor(private context: vscode.ExtensionContext) {
         this.statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
-        this.statusBarItem.command = 'grez.openDashboard'; // Command to trigger later
+        this.statusBarItem.command = 'grez.setupKey'; // Changed to setupKey for now since dashboard isn't built
         this.context.subscriptions.push(this.statusBarItem);
     }
 
-    private updateStatusBar(projectName: string) {
-        this.statusBarItem.text = `$(code) GREZ: Tracking ${projectName}`;
-        this.statusBarItem.tooltip = "Click to view your GREZ Dashboard";
+    public async updateToken() {
+        this.token = await this.context.secrets.get('grez_api_key');
+        console.log("[GREZ] Token refreshed in tracker.");
     }
 
-    public start(){
+    private updateStatusBar(projectName: string, isSyncing: boolean = false) {
+        if (isSyncing) {
+            this.statusBarItem.text = `$(pulse) GREZ: Syncing...`;
+            this.statusBarItem.color = new vscode.ThemeColor('statusBarItem.warningForeground');
+        } else {
+            this.statusBarItem.text = `$(heart) GREZ: ${projectName}`;
+            this.statusBarItem.color = undefined; // Reset to default
+        }
+        this.statusBarItem.tooltip = "Click to update your GREZ API Key";
+    }
+
+    public async start() {
+        await this.updateToken(); // MUST load token before starting syncs
+        
         this.statusBarItem.text = "$(sync~spin) GREZ: Initializing...";
         this.statusBarItem.show();
+
         this.disposables.push(
-            vscode.workspace.onDidChangeTextDocument(
-                () => {this.handleActivity(true);}
-            ),
-            vscode.window.onDidChangeTextEditorOptions(
-                () => {this.handleActivity(false);}
-            ),
-            vscode.window.onDidChangeActiveTextEditor(
-                () => {this.handleActivity(false);}
-            )
-        )
+            vscode.workspace.onDidChangeTextDocument(() => this.handleActivity(true)),
+            vscode.window.onDidChangeTextEditorOptions(() => this.handleActivity(false)),
+            vscode.window.onDidChangeActiveTextEditor(() => this.handleActivity(false))
+        );
     }
 
-    private handleActivity(isWrite : boolean) : void{
+    private async handleActivity(isWrite: boolean): Promise<void> {
         if (!vscode.window.state.focused) return;
 
         const now = Date.now();
@@ -57,15 +64,17 @@ export class GrezTracker{
             timestamp: new Date().toISOString()
         };
 
-        sendHeartbeat(heartbeat);
+        this.updateStatusBar(heartbeat.project, true);
 
-        this.updateStatusBar(heartbeat.project);
+        await sendHeartbeat(heartbeat, this.context);
+
+        this.updateStatusBar(heartbeat.project, false);
     }
 
-    public stop(){
+    public stop() {
         this.statusBarItem.hide();
         this.disposables.forEach(d => d.dispose());
         this.disposables = [];
-        console.log("[GREZ] Tracker stopped and UI cleaned up.");
+        console.log("[GREZ] Tracker stopped.");
     }
 }
