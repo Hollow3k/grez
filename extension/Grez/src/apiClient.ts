@@ -8,10 +8,15 @@ import { HeartbeatPayload } from './types';
 
 const API_BASE_URL = 'http://localhost:5000/api';
 
-export async function sendHeartbeat(payload : HeartbeatPayload) {
+export async function sendHeartbeat(payload : HeartbeatPayload, context: vscode.ExtensionContext) {
     try{
-        const token  = "INSERT_TOKEN"
+        const token  = await context.secrets.get('grez_api_key');
         
+        if (!token) {
+            console.warn('[GREZ] No API Key found. Skipping sync.');
+            return;
+        }
+
         const response = await axios.post(`${API_BASE_URL}/heartbeat`, payload, {
             headers: {
                 'Content-Type' : 'application/json',
