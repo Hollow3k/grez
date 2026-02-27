@@ -2,9 +2,6 @@ import { Link, useNavigate } from "react-router-dom";
 
 function Landing() {
   const navigate = useNavigate();
-  const handleLoginButton = () => {
-    navigate("/login");
-  };
   const handleSignupButton = () => {
     navigate("/signup");
   };

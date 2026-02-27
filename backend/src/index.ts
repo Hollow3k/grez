@@ -15,7 +15,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-app.post('/api/auth/register', register);
+app.post('/api/auth/signup', register);
 app.post('/api/auth/login', login);
 app.post('/api/heartbeat', protect, logHeartbeat);
 
