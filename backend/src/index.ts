@@ -6,6 +6,7 @@ import { connectDB } from './config/db.js'
 import { protect } from './middleware/auth.js';
 import { register, login } from './controllers/authController.js';
 import { logHeartbeat } from './controllers/activityController.js';
+import { getTodayStats } from "./controllers/vscode_stats.js";
 
 dotenv.config();
 connectDB();
@@ -18,6 +19,7 @@ app.use(express.json());
 app.post('/api/auth/signup', register);
 app.post('/api/auth/login', login);
 app.post('/api/heartbeat', protect, logHeartbeat);
+app.post('/api/get_stats', protect, getTodayStats);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
