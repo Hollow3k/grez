@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 const UserSchema = new Schema({
     username: {type : String, required: true, unique: true},
     password: {type : String, required: true},
+    leetcodeUsername: {type: String, default: null}, // User's LeetCode username
 }, { timestamps: true });
 
 UserSchema.pre('save' , async function (){

@@ -1,8 +1,7 @@
 import { useAuth } from "./context/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { get_coded_time } from './api/vscode_api';
-import { getLeetcodeSolved } from './api/leetcode_api';
-import type { LeetcodeSolvedStats } from './api/leetcode_api';
+import { getTodayStats } from './api/vscode_api';
+import { syncMyLeetcodeStats, updateLeetcodeUsername, getUserProfile } from './api/leetcode_api';
 import { useEffect, useState } from 'react';
 
 function Dash(){
@@ -11,45 +10,34 @@ function Dash(){
     const [codedTime, setCodedTime] = useState(0);
     const [leetcodeUsername, setLeetcodeUsername] = useState('');
     const [storedUsername, setStoredUsername] = useState<string | null>(null);
-    const [solvedQuestions, setSolvedQuestions] = useState<LeetcodeSolvedStats | null>(null);
+    const [leetcodeStats, setLeetcodeStats] = useState<any>(null);
     const [loadingLeetcode, setLoadingLeetcode] = useState(false);
+    const [syncing, setSyncing] = useState(false);
 
+    // Fetch profile and stats on mount
     useEffect(() => {
-        const fetchStats = async () => {
+        const fetchData = async () => {
             try {
-                const time = await get_coded_time(user.token);
-                setCodedTime(time);
+                // Fetch today's stats (includes both coding time and leetcode stats)
+                const statsData = await getTodayStats();
+                setCodedTime(statsData.coding?.totalMinutes || 0);
+                
+                // Set leetcode stats if available
+                if (statsData.leetcode) {
+                    setLeetcodeStats(statsData.leetcode);
+                }
+
+                // Fetch user profile to get leetcodeUsername
+                const profileData = await getUserProfile();
+                if (profileData.user.leetcodeUsername) {
+                    setStoredUsername(profileData.user.leetcodeUsername);
+                }
             } catch (error) {
-                console.error('Failed to fetch stats:', error);
+                console.error('Failed to fetch data:', error);
             }
         };
-        fetchStats();
+        fetchData();
     }, [user.token]);
-
-    useEffect(() => {
-        const stored = localStorage.getItem('leetcodeUsername');
-        if (stored) {
-            setStoredUsername(stored);
-        }
-    }, []);
-
-    useEffect(() => {
-        const fetchLeetcodeStats = async () => {
-            if (!storedUsername) return;
-            
-            setLoadingLeetcode(true);
-            try {
-                const data = await getLeetcodeSolved(storedUsername);
-                setSolvedQuestions(data);
-            } catch (error) {
-                console.error('Failed to fetch leetcode stats:', error);
-            } finally {
-                setLoadingLeetcode(false);
-            }
-        };
-        
-        fetchLeetcodeStats();
-    }, [storedUsername]);
 
     const copyKey = () => {
         navigator.clipboard.writeText(user.token);
@@ -61,19 +49,52 @@ function Dash(){
         navigate("/");
     };
 
-    const handleLeetcodeSubmit = (e: React.FormEvent) => {
+    const handleLeetcodeSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (leetcodeUsername.trim()) {
-            localStorage.setItem('leetcodeUsername', leetcodeUsername.trim());
-            setStoredUsername(leetcodeUsername.trim());
-            setLeetcodeUsername('');
+            try {
+                setLoadingLeetcode(true);
+                await updateLeetcodeUsername(leetcodeUsername.trim());
+                setStoredUsername(leetcodeUsername.trim());
+                setLeetcodeUsername('');
+                alert('LeetCode username saved! Click "Sync Now" to fetch your stats.');
+            } catch (error: any) {
+                console.error('Failed to update leetcode username:', error);
+                const errorMsg = error.response?.data?.message || 'Failed to save username. Please try again.';
+                alert(errorMsg);
+            } finally {
+                setLoadingLeetcode(false);
+            }
+        }
+    };
+
+    const handleSyncNow = async () => {
+        try {
+            setSyncing(true);
+            const result = await syncMyLeetcodeStats();
+            setLeetcodeStats(result.stats);
+            
+            // Refresh today's stats to get updated data
+            const statsData = await getTodayStats();
+            if (statsData.leetcode) {
+                setLeetcodeStats(statsData.leetcode);
+            }
+            
+            alert('Stats synced successfully!');
+        } catch (error: any) {
+            console.error('Failed to sync leetcode stats:', error);
+            const errorMsg = error.response?.data?.message || 'Failed to sync stats. Make sure your LeetCode username is correct.';
+            alert(errorMsg);
+        } finally {
+            setSyncing(false);
         }
     };
 
     const handleResetUsername = () => {
-        localStorage.removeItem('leetcodeUsername');
-        setStoredUsername(null);
-        setSolvedQuestions(null);
+        if (confirm('Do you want to change your LeetCode username?')) {
+            setStoredUsername(null);
+            setLeetcodeStats(null);
+        }
     };
     
     return(
@@ -90,33 +111,53 @@ function Dash(){
                         type="text"
                         value={leetcodeUsername}
                         onChange={(e) => setLeetcodeUsername(e.target.value)}
-                        placeholder="Enter leetcode username"
-                        className="px-4 py-2 text-black rounded"
+                        placeholder="Enter your LeetCode username"
+                        className="px-4 py-2 text-blue-300 rounded"
                     />
-                    <button type="submit" className="bg-blue-500 ml-2 px-4 py-2 rounded">
-                        Save
+                    <button 
+                        type="submit" 
+                        className="bg-blue-500 ml-2 px-4 py-2 rounded"
+                        disabled={loadingLeetcode}
+                    >
+                        {loadingLeetcode ? 'Saving...' : 'Save'}
                     </button>
                 </form>
             ) : (
                 <div className="mt-4">
-                    <p>Leetcode Username: {storedUsername}</p>
-                    <button onClick={handleResetUsername} className="bg-red-500 px-4 py-2 rounded mt-2">
-                        Reset Username
-                    </button>
-                    {loadingLeetcode ? (
-                        <p className="mt-2">Loading leetcode stats...</p>
-                    ) : solvedQuestions ? (
-                        <div className="mt-2">
-                            <p>Total Solved: {solvedQuestions.solvedProblem || 0}</p>
-                            <p>Easy: {solvedQuestions.easySolved || 0}</p>
-                            <p>Medium: {solvedQuestions.mediumSolved || 0}</p>
-                            <p>Hard: {solvedQuestions.hardSolved || 0}</p>
+                    <p>LeetCode Username: <span className="font-bold">{storedUsername}</span></p>
+                    <div className="flex gap-2 mt-2">
+                        <button 
+                            onClick={handleSyncNow} 
+                            className="bg-green-500 px-4 py-2 rounded"
+                            disabled={syncing}
+                        >
+                            {syncing ? 'Syncing...' : 'Sync Now'}
+                        </button>
+                        <button 
+                            onClick={handleResetUsername} 
+                            className="bg-red-500 px-4 py-2 rounded"
+                        >
+                            Change Username
+                        </button>
+                    </div>
+                    {leetcodeStats && (
+                        <div className="mt-4 bg-gray-800 p-4 rounded">
+                            <h3 className="text-xl font-bold mb-2">LeetCode Stats</h3>
+                            <p>Total Solved: <span className="font-bold">{leetcodeStats.totalSolved || 0}</span></p>
+                            <p>Easy: <span className="text-green-400">{leetcodeStats.easySolved || 0}</span></p>
+                            <p>Medium: <span className="text-yellow-400">{leetcodeStats.mediumSolved || 0}</span></p>
+                            <p>Hard: <span className="text-red-400">{leetcodeStats.hardSolved || 0}</span></p>
+                            {leetcodeStats.lastSynced && (
+                                <p className="text-sm text-gray-400 mt-2">
+                                    Last synced: {new Date(leetcodeStats.lastSynced).toLocaleString()}
+                                </p>
+                            )}
                         </div>
-                    ) : null}
+                    )}
                 </div>
             )}
 
-            <h1 className="text-white">Time spent coding today : {Math.floor(codedTime/60)} Hrs {codedTime%60} mins</h1>
+            <h1 className="text-white mt-6">Time spent coding today: {Math.floor(codedTime/60)} Hrs {codedTime%60} mins</h1>
             
         </div>
             

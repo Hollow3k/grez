@@ -7,7 +7,9 @@ import { protect } from './middleware/auth.js';
 import { register, login } from './controllers/authController.js';
 import { logHeartbeat } from './controllers/activityController.js';
 import { getTodayStats } from "./controllers/vscode_stats.js";
-import { getLeetcodeStats } from './controllers/leetcodeController.js';
+import { syncMyLeetcodeStats } from './controllers/leetcodeController.js';
+import { updateLeetcodeUsername, getProfile } from './controllers/userController.js';
+import { startLeetcodeSyncCron } from './services/leetcodeCronService.js';
 
 dotenv.config();
 connectDB();
@@ -21,7 +23,9 @@ app.post('/api/auth/signup', register);
 app.post('/api/auth/login', login);
 app.post('/api/heartbeat', protect, logHeartbeat);
 app.post('/api/get_stats', protect, getTodayStats);
-app.get('/api/leetcode/:username', protect, getLeetcodeStats);
+app.post('/api/leetcode/sync', protect, syncMyLeetcodeStats);
+app.get('/api/user/profile', protect, getProfile);
+app.put('/api/user/leetcode-username', protect, updateLeetcodeUsername);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
@@ -31,4 +35,7 @@ app.listen(PORT, () => {
     🐘 MongoDB: Connected
     💓 Monitoring pulses...
     `);
+    
+    // Start the automatic LeetCode sync cron job
+    startLeetcodeSyncCron();
 });
