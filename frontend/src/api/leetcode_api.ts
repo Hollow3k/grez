@@ -1,3 +1,5 @@
+import api from './axios';
+
 export interface LeetcodeSolvedStats {
     solvedProblem: number;
     easySolved: number;
@@ -6,12 +8,6 @@ export interface LeetcodeSolvedStats {
 }
 
 export async function getLeetcodeSolved(username: string): Promise<LeetcodeSolvedStats> {
-    const response = await fetch(`https://alfa-leetcode-api.onrender.com/${username}/solved`);
-    
-    if (!response.ok) {
-        throw new Error('Failed to fetch leetcode stats');
-    }
-    
-    const data = await response.json();
-    return data;
+    const response = await api.get(`/leetcode/${username}`);
+    return response.data;
 }
