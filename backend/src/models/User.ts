@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 const UserSchema = new Schema({
     username: {type : String, required: true, unique: true},
     password: {type : String, required: true},
+    githubUsername: { type: String, default: null }, // User's Github username
     leetcodeUsername: {type: String, default: null}, // User's LeetCode username
 }, { timestamps: true });
 

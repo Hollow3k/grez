@@ -15,6 +15,11 @@ export interface IDailyStats extends Document {
         totalSolved: number;
         lastSynced?: Date | null;
     };
+    github?: {
+        commits: number;
+        topRepo: string;
+        lastSynced?: Date | null;
+    };
 }
 
 const DailyStatsSchema = new Schema({
@@ -31,6 +36,11 @@ const DailyStatsSchema = new Schema({
         hardSolved: {type: Number, default: 0},
         totalSolved: {type: Number, default: 0},
         lastSynced: {type: Date, default: null} // Track when data was last fetched
+    },
+    github: {
+        commits: {type: Number, default: 0},
+        topRepo: {type: String, default: "No activity"},
+        lastSynced: {type: Date, default: null}
     }
 }, {timestamps: true});
 
